@@ -23,7 +23,7 @@ config = {
     'partial_epochs': 2,
     
     # Cycle Configuration
-    'cycle_length': 13,  # 4 global + 10 partial
+    'cycle_length': 13,  # 3 global + 10 partial
     'global_rounds': 3,  # Number of global rounds per cycle
     
     # Resources

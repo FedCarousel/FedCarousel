@@ -260,9 +260,6 @@ class LayerWiseFedAvg(fl.server.strategy.FedAvg):
                 print(f"   Skipping this layer update (using previous values)")
                 continue
         
-        comm_saved = len(cluster_layer_results) * 90  
-        print(f"   ✅ Partial aggregation complete "
-            f"(~{comm_saved}% communication saved)")
         
         return ndarrays_to_parameters(aggregated_params), {}
    

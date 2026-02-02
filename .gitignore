@@ -37,7 +37,6 @@ env/
 .ipynb_checkpoints
 
 # Data directories
-data/
 CIFAR100_data/
 tiny-imagenet-200/
 
@@ -65,4 +64,4 @@ Thumbs.db
 logs/
 CODE_REVIEW.md
 PROJECT_SUMMARY.md
-QUICKSTART.md
+README.md

@@ -151,7 +151,7 @@ class LayerWiseFlowerClient(fl.client.NumPyClient):
                 optimizer.step()
 
     def train_specific_layer(self, layer_id: int, epochs: int, 
-                            learning_rate: float = 0.001):
+                            learning_rate: float = 0.01):
         """
         Train only a specific layer (partial mode).
         

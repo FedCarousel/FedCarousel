@@ -58,15 +58,10 @@ def fit_config(server_round: int, cfg):
 
 def main():
     """Main experiment execution."""
-    print("="*70)
-    print("CIFAR-10 Experiment - Layer-wise Federated Learning")
-    print("="*70)
-    
     # Set seed for reproducibility
     set_seed(config['seed'])
     
     # Prepare dataset
-    print("\n📦 Preparing federated dataset...")
     trainloaders, valloaders, testloader, cluster_assignments, client_to_cluster = \
         prepare_federated_dataset(
             dataset_name=config['dataset_name'],

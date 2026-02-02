@@ -1,5 +1,5 @@
 """
-Unified dataset preparation for federated learning.
+Unified dataset preparation.
 
 Handles:
 - CIFAR-10
@@ -198,12 +198,6 @@ def partition_data_dirichlet(trainset,
     print(f"   Distributed samples: {total_distributed}")
     print(f"   Difference: {len(trainset) - total_distributed}")
     
-    # Show sample distribution
-    print(f"\n   Sample distribution across clients:")
-    print(f"   Min: {min(len(cd) for cd in client_datasets)}")
-    print(f"   Max: {max(len(cd) for cd in client_datasets)}")
-    print(f"   Mean: {np.mean([len(cd) for cd in client_datasets]):.1f}")
-    
     return client_datasets
 
 
@@ -345,3 +339,57 @@ def prepare_federated_dataset(
     print(f"\n✅ Federated dataset preparation complete!")
     
     return trainloaders, valloaders, testloader, cluster_assignments, client_to_cluster
+
+def prepare_federated_dataset_simple(
+    dataset_name: str,
+    num_clients: int,
+    alpha: float,
+    batch_size: int,
+    data_root: str = './data',
+    seed: int = 42
+) -> Tuple[List, List, DataLoader]:
+    """
+    Simplified pipeline for FedAvg/FedProx (NO clustering).
+    
+    This function prepares federated data without computing client
+    signatures or performing clustering, which is not needed for
+    standard FedAvg and FedProx algorithms.
+    
+    Args:
+        dataset_name: 'cifar10', 'cifar100', or 'tinyimagenet'
+        num_clients: Number of federated clients
+        alpha: Dirichlet concentration parameter (lower = more non-IID)
+        batch_size: Batch size for dataloaders
+        data_root: Root directory for datasets
+        seed: Random seed for reproducibility
+        
+    Returns:
+        Tuple of (trainloaders, valloaders, testloader)
+    """
+    set_seed(seed)
+    
+    # Load centralized dataset
+    trainset, testset, num_classes = load_centralized_dataset(
+        dataset_name, data_root
+    )
+    
+    # Create test dataloader
+    testloader = DataLoader(
+        testset, 
+        batch_size=batch_size, 
+        shuffle=False, 
+        num_workers=2
+    )
+    
+    # Partition data to clients using Dirichlet
+    client_datasets = partition_data_dirichlet(
+        trainset, num_clients, num_classes, alpha, seed
+    )
+    
+    # Create dataloaders
+    trainloaders, valloaders = create_dataloaders(
+        client_datasets, batch_size
+    )
+    
+    
+    return trainloaders, valloaders, testloader
