@@ -76,9 +76,9 @@ class LayerWiseFlowerClient(fl.client.NumPyClient):
         position_in_cycle = (round_num - 1) % cycle_length
         
         if position_in_cycle < global_rounds:
-            return "global", 4
+            return "global", 2
         else:
-            return "partial", 4
+            return "partial", 2
 
     def get_current_layer_to_train(self, round_num: int, cycle_length: int,
                                    global_rounds: int) -> int:
@@ -117,7 +117,7 @@ class LayerWiseFlowerClient(fl.client.NumPyClient):
         """Extract parameters from model."""
         return [val.cpu().numpy() for _, val in self.model.state_dict().items()]
 
-    def train_global(self, epochs: int, learning_rate: float = 0.001):
+    def train_global(self, epochs: int, learning_rate: float = 0.01):
         """
         Train entire model (global mode).
         
@@ -214,6 +214,36 @@ class LayerWiseFlowerClient(fl.client.NumPyClient):
                 
                 optimizer.step()
 
+    def get_layer_parameters(self, layer_id: int):
+        """
+        Extract parameters of a specific layer only.
+        
+        Used in partial mode to reduce communication cost.
+        
+        Args:
+            layer_id: ID of layer to extract
+            
+        Returns:
+            List of numpy arrays for this layer's parameters
+        """
+        layer_names = self.layer_mapping[layer_id]
+        params = []
+        param_names = []
+        
+        for name, param in self.model.named_parameters():
+            if any(layer_name in name for layer_name in layer_names):
+                params.append(param.detach().cpu().numpy())
+                param_names.append(name)
+        
+        if len(params) == 0:
+            raise RuntimeError(
+                f"Client {self.client_id}: No parameters found for layer {layer_id}!"
+            )
+        
+        print(f"   Client {self.client_id}: Sending {len(params)} params "
+          f"for layer {layer_id}")
+        return params
+
     def fit(self, parameters, config):
         """
         Train the model for one round.
@@ -230,9 +260,9 @@ class LayerWiseFlowerClient(fl.client.NumPyClient):
             Tuple of (parameters, num_samples, metrics)
         """
         round_num = config.get("round_num", 1)
-        cycle_length = config.get("cycle_length", 14)
-        global_rounds = config.get("global_rounds", 4)
-        learning_rate = config.get("learning_rate", 0.001)
+        cycle_length = config.get("cycle_length")
+        global_rounds = config.get("global_rounds")
+        learning_rate = config.get("learning_rate")
         
         # Load parameters from server
         self.set_parameters(parameters)
@@ -246,22 +276,30 @@ class LayerWiseFlowerClient(fl.client.NumPyClient):
         if training_mode == "global":
             self.train_global(epochs, learning_rate)
             layer_trained = -1
+            params_to_send = self.get_parameters(config)
+            send_partial = False
         else:
             layer_to_train = self.get_current_layer_to_train(
                 round_num, cycle_length, global_rounds
             )
             if layer_to_train != -1:
                 self.train_specific_layer(layer_to_train, epochs, learning_rate)
+                params_to_send = self.get_layer_parameters(layer_to_train)
+                send_partial = True
+            else:
+                params_to_send = self.get_parameters(config)
+                send_partial = False
             layer_trained = layer_to_train
-        
-        # Return updated parameters
-        all_params = self.get_parameters(config)
+                
+
+
         num_samples = len(self.trainloader.dataset)
         
-        return all_params, num_samples, {
+        return params_to_send, num_samples, {
             "layer_trained": int(layer_trained),
             "training_mode": str(training_mode),
-            "cluster_id": int(self.cluster_id)
+            "cluster_id": int(self.cluster_id),
+            "send_partial": send_partial
         }
 
     def evaluate(self, parameters, config):

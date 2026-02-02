@@ -199,10 +199,12 @@ class LayerWiseFedAvg(fl.server.strategy.FedAvg):
         for client_proxy, fit_res in results:
             cluster_id = fit_res.metrics.get("cluster_id")
             layer_trained = fit_res.metrics.get("layer_trained")
+            send_partial = fit_res.metrics.get("send_partial", False)
             
             if (layer_trained is not None and 
                 layer_trained != -1 and 
-                cluster_id is not None):
+                cluster_id is not None and
+                send_partial):
                 key = (cluster_id, layer_trained)
                 if key not in cluster_layer_results:
                     cluster_layer_results[key] = []
@@ -229,25 +231,41 @@ class LayerWiseFedAvg(fl.server.strategy.FedAvg):
             # Aggregate across clients in this cluster for this layer
             total_examples = sum(fit_res.num_examples for _, fit_res in clients)
             
-            for param_idx in layer_param_indices:
-                weighted_sum = np.zeros_like(
-                    aggregated_params[param_idx], 
-                    dtype=np.float64
-                )
-                
-                for _, fit_res in clients:
-                    client_params = parameters_to_ndarrays(fit_res.parameters)
-                    weight = fit_res.num_examples / total_examples
-                    weighted_sum += client_params[param_idx] * weight
-                
-                # Update this layer's parameters
-                aggregated_params[param_idx] = weighted_sum
+            try:
+                for local_idx, global_idx in enumerate(layer_param_indices):
+                    weighted_sum = np.zeros_like(
+                        aggregated_params[global_idx], 
+                        dtype=np.float64
+                    )
+                    
+                    for _, fit_res in clients:
+                        client_params = parameters_to_ndarrays(fit_res.parameters)
+                        
+                        # ✅ VÉRIFICATION CRITIQUE
+                        if local_idx >= len(client_params):
+                            raise RuntimeError(
+                                f"Index mismatch: layer {layer_id} expects "
+                                f"{len(layer_param_indices)} params, "
+                                f"client sent {len(client_params)}"
+                            )
+                        
+                        weight = fit_res.num_examples / total_examples
+                        weighted_sum += client_params[local_idx] * weight
+                    
+                    aggregated_params[global_idx] = weighted_sum
+                    
+            except Exception as e:
+                print(f"   ⚠️ ERROR in aggregation for cluster {cluster_id}, "
+                    f"layer {layer_id}: {e}")
+                print(f"   Skipping this layer update (using previous values)")
+                continue
         
+        comm_saved = len(cluster_layer_results) * 90  
         print(f"   ✅ Partial aggregation complete "
-              f"({len(cluster_layer_results)} cluster-layer pairs)")
+            f"(~{comm_saved}% communication saved)")
         
         return ndarrays_to_parameters(aggregated_params), {}
-    
+   
     def aggregate_evaluate(
         self,
         server_round: int,

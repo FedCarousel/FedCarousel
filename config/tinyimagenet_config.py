@@ -1,13 +1,3 @@
-"""
-Configuration for Tiny ImageNet experiments with ResNet-18.
-
-Training cycle structure:
-- Rounds 1-5: Global training (all clients, entire model)
-- Rounds 6-26: Partial training (layer-wise per cluster)
-- Cycle length: 26 rounds
-- 21 clusters, 21 layers → perfect 1:1 rotation
-"""
-
 config = {
     # Dataset
     'dataset_name': 'tinyimagenet',
@@ -19,23 +9,23 @@ config = {
     'use_maxpool': True,  # Use maxpool for 64x64 images
     
     # Federated Learning
-    'num_clients': 50,  # Fewer clients due to larger dataset
+    'num_clients': 100, 
     'num_clusters': 21,
     'num_rounds': 500,
     
     # Data Distribution
     'alpha_client': 0.1,  # Dirichlet concentration
-    'clustering_method': 'kmeans',  # K-means clustering
+    'clustering_method': 'random' ,  # 'random' or 'kmeans'
     
     # Training
     'batch_size': 32,
     'learning_rate': 0.001,
-    'global_epochs': 4,
-    'partial_epochs': 4,
+    'global_epochs': 2,
+    'partial_epochs': 2,
     
     # Cycle Configuration
-    'cycle_length': 26,  # 5 global + 21 partial
-    'global_rounds': 5,
+    'cycle_length': 23,  
+    'global_rounds': 3,
     
     # Resources
     'client_resources': {
@@ -51,11 +41,11 @@ config = {
     },
     
     # Reproducibility
-    'seed': 42,
+    'seed': 15,
     
     # Evaluation
     'fraction_fit': 1.0,
-    'fraction_evaluate': 0.0,
+    'fraction_evaluate': 0.1,
     
     # Output
     'results_dir': './Results',
