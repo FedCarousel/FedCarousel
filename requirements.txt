@@ -1,0 +1,18 @@
+
+
+# ── Federated learning framework ─────────────────────────────────────────────
+# The simulation extra pulls in Ray, which runs the clients as parallel actors.
+# The code uses the start_simulation API together with the Context-based
+# client_fn signature, i.e. Flower 1.9 or later.
+flwr[simulation]>=1.9,<2.0
+
+# ── Deep learning ────────────────────────────────────────────────────────────
+# Install the build matching your CUDA version, see https://pytorch.org
+torch>=2.0
+torchvision>=0.15
+
+# ── Scientific stack ─────────────────────────────────────────────────────────
+numpy>=1.24
+scikit-learn>=1.2        # KMeans, used for the heterogeneity-aware grouping
+matplotlib>=3.7          # figures
+Pillow>=9.0              # Tiny-ImageNet loading
